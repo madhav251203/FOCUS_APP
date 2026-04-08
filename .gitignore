@@ -1,0 +1,19 @@
+node_modules/
+.expo/
+dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.env
+.env.local
+npm-debug.*
+*.tsbuildinfo
+
+# Admin panel
+admin-panel/node_modules/
+admin-panel/dist/
+admin-panel/.env
