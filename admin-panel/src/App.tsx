@@ -77,53 +77,58 @@ export function App() {
   const loadData = async () => {
     setLoading(true);
 
-    const [usersRes, sessionsRes, redemptionsRes, rewardsRes, subsRes] = await Promise.all([
-      supabase.from('users').select('*').order('created_at', { ascending: false }),
-      supabase.from('focus_sessions').select('id, user_id, duration_minutes, app_switches, screen_offs, cheat_detected, started_at, status'),
-      supabase.from('redemptions').select('*'),
-      supabase.from('rewards').select('*').order('points_cost', { ascending: true }),
-      supabase.from('subscriptions').select('amount, status'),
-    ]);
+    try {
+      const [usersRes, sessionsRes, redemptionsRes, rewardsRes, subsRes] = await Promise.all([
+        supabase.from('users').select('*').order('created_at', { ascending: false }),
+        supabase.from('focus_sessions').select('id, user_id, duration_minutes, app_switches, screen_offs, cheat_detected, started_at, status'),
+        supabase.from('redemptions').select('*'),
+        supabase.from('rewards').select('*').order('points_cost', { ascending: true }),
+        supabase.from('subscriptions').select('amount, status'),
+      ]);
 
-    const allUsers = usersRes.data || [];
-    const allSessions = sessionsRes.data || [];
-    const allRedemptions = redemptionsRes.data || [];
-    const allRewards = rewardsRes.data || [];
-    const allSubs = subsRes.data || [];
+      const allUsers = usersRes.data || [];
+      const allSessions = sessionsRes.data || [];
+      const allRedemptions = redemptionsRes.data || [];
+      const allRewards = rewardsRes.data || [];
+      const allSubs = subsRes.data || [];
 
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const activeUsers = allUsers.filter(
-      (u) => new Date(u.updated_at || u.created_at) > weekAgo
-    ).length;
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const activeUsers = allUsers.filter(
+        (u) => new Date(u.updated_at || u.created_at) > weekAgo
+      ).length;
 
-    const totalRevenue = allSubs
-      .filter((s) => s.status === 'active')
-      .reduce((sum, s) => sum + (s.amount || 0), 0);
+      const totalRevenue = allSubs
+        .filter((s) => s.status === 'active')
+        .reduce((sum, s) => sum + (s.amount || 0), 0);
 
-    setStats({
-      totalUsers: allUsers.length,
-      activeUsers,
-      totalRevenue,
-      totalSessions: allSessions.length,
-      totalRedemptions: allRedemptions.length,
-    });
-
-    setUsers(allUsers);
-    setRewards(allRewards);
-
-    // Find suspicious sessions (high app switches or screen offs)
-    const suspiciousSessions = allSessions
-      .filter((s) => s.app_switches > 2 || s.screen_offs > 1 || s.cheat_detected)
-      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
-      .slice(0, 50)
-      .map((s) => {
-        const user = allUsers.find((u) => u.id === s.user_id);
-        return { ...s, user_email: user?.email };
+      setStats({
+        totalUsers: allUsers.length,
+        activeUsers,
+        totalRevenue,
+        totalSessions: allSessions.length,
+        totalRedemptions: allRedemptions.length,
       });
 
-    setSuspicious(suspiciousSessions);
-    setLoading(false);
+      setUsers(allUsers);
+      setRewards(allRewards);
+
+      // Find suspicious sessions (high app switches or screen offs)
+      const suspiciousSessions = allSessions
+        .filter((s) => s.app_switches > 2 || s.screen_offs > 1 || s.cheat_detected)
+        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+        .slice(0, 50)
+        .map((s) => {
+          const user = allUsers.find((u) => u.id === s.user_id);
+          return { ...s, user_email: user?.email };
+        });
+
+      setSuspicious(suspiciousSessions);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveReward = async () => {
