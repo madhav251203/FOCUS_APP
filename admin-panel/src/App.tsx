@@ -78,12 +78,20 @@ export function App() {
     setLoading(true);
 
     try {
-      const [usersRes, sessionsRes, redemptionsRes, rewardsRes, subsRes] = await Promise.all([
-        supabase.from('users').select('*').order('created_at', { ascending: false }),
-        supabase.from('focus_sessions').select('id, user_id, duration_minutes, app_switches, screen_offs, cheat_detected, started_at, status'),
-        supabase.from('redemptions').select('*'),
-        supabase.from('rewards').select('*').order('points_cost', { ascending: true }),
-        supabase.from('subscriptions').select('amount, status'),
+      // Race queries against a timeout so the UI renders even without a backend
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase request timeout')), 5000)
+      );
+
+      const [usersRes, sessionsRes, redemptionsRes, rewardsRes, subsRes] = await Promise.race([
+        Promise.all([
+          supabase.from('users').select('*').order('created_at', { ascending: false }),
+          supabase.from('focus_sessions').select('id, user_id, duration_minutes, app_switches, screen_offs, cheat_detected, started_at, status'),
+          supabase.from('redemptions').select('*'),
+          supabase.from('rewards').select('*').order('points_cost', { ascending: true }),
+          supabase.from('subscriptions').select('amount, status'),
+        ]),
+        timeout,
       ]);
 
       const allUsers = usersRes.data || [];
